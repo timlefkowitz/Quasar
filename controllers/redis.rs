@@ -14,10 +14,45 @@ struct Pokemon {
 }
 
 // Function to connect to Redis
-fn connect_to_redis() -> RedisResult<Connection> {
-    let client = redis::Client::open("redis://127.0.0.1/")?; // Replace with your Redis URL if needed
-    client.get_connection()
+use redis::{Commands, Connection, RedisResult, Client};
+
+fn connect_to_redis() -> Result<Connection, String> {
+    // Try to open a connection to the Redis server
+    let client = Client::open("redis://127.0.0.1/").map_err(|e| format!("Failed to create Redis client: {}", e))?;
+
+    // Try to get a connection
+    client.get_connection().map_err(|e| format!("Failed to connect to Redis: {}", e))
 }
+
+
+fn get_all_entries() -> RedisResult<HashMap<String, String>> {
+    let mut conn = connect_to_redis()?;
+
+    let mut cursor = 0;
+    let mut all_entries: HashMap<String, String> = HashMap::new();
+
+    // SCAN through all keys
+    loop {
+        // Fetch a batch of keys from Redis
+        let (new_cursor, keys): (u64, Vec<String>) = conn.scan(cursor).unwrap();
+        cursor = new_cursor;
+
+        // Fetch the values for each key
+        for key in keys {
+            let value: String = conn.get(&key).unwrap();
+            all_entries.insert(key, value);
+        }
+
+        // If the cursor is zero, we have scanned all keys
+        if cursor == 0 {
+            break;
+        }
+    }
+
+    Ok(all_entries)
+}
+
+
 
 // Handle the POST request
 #[post("/pokemon", format = "json", data = "<pokemon>")]
@@ -37,6 +72,19 @@ fn handle_post(pokemon: Json<Pokemon>) -> String {
 }
 
 #[launch]
-fn rocket() -> _ {
+fn rocket() -> Rocket<Build> {
     rocket::build().mount("/", routes![handle_post])
+}
+
+fn main() {
+    match get_all_entries() {
+        Ok(entries) => {
+            for (key, value) in entries {
+                println!("Key: {}, Value: {}", key, value);
+            }
+        }
+        Err(err) => {
+            eprintln!("Error: {}", err);
+        }
+    }
 }
