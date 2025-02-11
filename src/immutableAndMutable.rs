@@ -6,16 +6,23 @@ fn main () {
 
     y = 20; //Allowed because it's mutable
     println!("updated y: {}", y);
-    
+
     // Shadowing
-    let a: i32 = 42; // Explicit type 
+    let a: i32 = 42; // Explicit type
     let b = 3.14; // F64 inferred
     let is_active: bool = true;
     let c = 'R';
-    
-    // Shadowing example 
-    let x2 = 5; 
+
+    // Shadowing example
+    let x2 = 5;
     let x2 = x2 + 1; // New x shadows old x
     println!("x2: {}", x2);
-    
+
+    let sum = add(1, 2);
+    println!("sum: {}", sum);
+}
+
+// Functions and Return Values 
+fn add(a: i32, b: i32) -> i32 {
+    a+b // Implicit return 
 }
